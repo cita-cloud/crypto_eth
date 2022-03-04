@@ -1,5 +1,5 @@
 [package]
-name = "kms"
+name = "crypto"
 version = "6.3.0"
 authors = ["Rivtower Technologies <contact@rivtower.com>"]
 license = "Apache-2.0"
