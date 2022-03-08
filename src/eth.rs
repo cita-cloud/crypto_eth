@@ -40,17 +40,20 @@ fn secp256k1_sign(
     msg: &[u8],
 ) -> Result<[u8; SECP256K1_SIGNATURE_BYTES_LEN], StatusCode> {
     let context = &SECP256K1;
-    // no way to create from raw byte array.
     let sec = secp256k1::SecretKey::from_slice(privkey).unwrap();
-    let s = context.sign_recoverable(&secp256k1::Message::from_slice(msg).unwrap(), &sec);
-    let (rec_id, data) = s.serialize_compact();
-    let mut data_arr = [0; SECP256K1_SIGNATURE_BYTES_LEN];
+    if let Ok(message) = secp256k1::Message::from_slice(msg) {
+        let s = context.sign_recoverable(&message, &sec);
+        let (rec_id, data) = s.serialize_compact();
+        let mut data_arr = [0; SECP256K1_SIGNATURE_BYTES_LEN];
 
-    // no need to check if s is low, it always is
-    data_arr[0..SECP256K1_SIGNATURE_BYTES_LEN - 1]
-        .copy_from_slice(&data[0..SECP256K1_SIGNATURE_BYTES_LEN - 1]);
-    data_arr[SECP256K1_SIGNATURE_BYTES_LEN - 1] = rec_id.to_i32() as u8;
-    Ok(data_arr)
+        // no need to check if s is low, it always is
+        data_arr[0..SECP256K1_SIGNATURE_BYTES_LEN - 1]
+            .copy_from_slice(&data[0..SECP256K1_SIGNATURE_BYTES_LEN - 1]);
+        data_arr[SECP256K1_SIGNATURE_BYTES_LEN - 1] = rec_id.to_i32() as u8;
+        Ok(data_arr)
+    } else {
+        Err(StatusCode::SignError)
+    }
 }
 
 fn secp256k1_recover(signature: &[u8], message: &[u8]) -> Result<Vec<u8>, StatusCode> {
@@ -62,11 +65,11 @@ fn secp256k1_recover(signature: &[u8], message: &[u8]) -> Result<Vec<u8>, Status
             &signature[0..SECP256K1_SIGNATURE_BYTES_LEN - 1],
             rid,
         ) {
-            if let Ok(publ) =
-                context.recover(&secp256k1::Message::from_slice(message).unwrap(), &rsig)
-            {
-                let serialized = publ.serialize_uncompressed();
-                return Ok(serialized[1..65].to_vec());
+            if let Ok(msg) = secp256k1::Message::from_slice(message) {
+                if let Ok(publ) = context.recover(&msg, &rsig) {
+                    let serialized = publ.serialize_uncompressed();
+                    return Ok(serialized[1..65].to_vec());
+                }
             }
         }
     }
@@ -213,6 +216,34 @@ fn check_transaction(raw_tx: &RawTransaction) -> Result<(), StatusCode> {
 mod tests {
     use super::*;
 
+    const SECP256K1_PUBKEY_BYTES_LEN: usize = 64;
+    const SECP256K1_PRIVKEY_BYTES_LEN: usize = 32;
+
+    fn secp256k1_gen_keypair() -> Result<
+        (
+            [u8; SECP256K1_PUBKEY_BYTES_LEN],
+            [u8; SECP256K1_PRIVKEY_BYTES_LEN],
+        ),
+        StatusCode,
+    > {
+        let context = &SECP256K1;
+        let (sec_key, pub_key) = context.generate_keypair(&mut rand::thread_rng());
+
+        let serialized = pub_key.serialize_uncompressed();
+        let mut pub_key = [0u8; SECP256K1_PUBKEY_BYTES_LEN];
+        pub_key.copy_from_slice(&serialized[1..65]);
+
+        let mut priv_key = [0u8; SECP256K1_PRIVKEY_BYTES_LEN];
+        priv_key.copy_from_slice(&sec_key[0..32]);
+
+        Ok((pub_key, priv_key))
+    }
+
+    fn generate_keypair() -> Result<(Vec<u8>, Vec<u8>), StatusCode> {
+        let (pk, sk) = secp256k1_gen_keypair()?;
+        Ok((pk.to_vec(), sk.to_vec()))
+    }
+
     #[test]
     fn keccak_test() {
         let hash_empty: [u8; HASH_BYTES_LEN] = [
@@ -228,5 +259,49 @@ mod tests {
         let data = vec![1u8, 2, 3, 4, 5, 6, 7];
         let hash = hash_data(&data);
         assert!(verify_data_hash(&data, &hash).is_ok());
+    }
+
+    #[test]
+    fn test_signature() {
+        // message must be 32 bytes
+        let data: [u8; HASH_BYTES_LEN] = [
+            0xc5, 0xd2, 0x46, 0x01, 0x86, 0xf7, 0x23, 0x3c, 0x92, 0x7e, 0x7d, 0xb2, 0xdc, 0xc7,
+            0x03, 0xc0, 0xe5, 0x00, 0xb6, 0x53, 0xca, 0x82, 0x27, 0x3b, 0x7b, 0xfa, 0xd8, 0x04,
+            0x5d, 0x85, 0xa4, 0x70,
+        ];
+
+        let (pubkey, privkey) = generate_keypair().unwrap();
+        let signature = sign_message(&pubkey, &privkey, &data).unwrap();
+        assert_eq!(recover_signature(&data, &signature), Ok(pubkey));
+    }
+
+    #[test]
+    fn test_invalid_msg() {
+        // invalid message means len is not 32
+        let invalid_msg: [u8; HASH_BYTES_LEN + 1] = [
+            0xc5, 0xd2, 0x46, 0x01, 0x86, 0xf7, 0x23, 0x3c, 0x92, 0x7e, 0x7d, 0xb2, 0xdc, 0xc7,
+            0x03, 0xc0, 0xe5, 0x00, 0xb6, 0x53, 0xca, 0x82, 0x27, 0x3b, 0x7b, 0xfa, 0xd8, 0x04,
+            0x5d, 0x85, 0xa4, 0x70, 0x70,
+        ];
+
+        let (pubkey, privkey) = generate_keypair().unwrap();
+        assert_eq!(
+            sign_message(&pubkey, &privkey, &invalid_msg),
+            Err(StatusCode::SignError)
+        );
+
+        // message must be 32 bytes
+        let data: [u8; HASH_BYTES_LEN] = [
+            0xc5, 0xd2, 0x46, 0x01, 0x86, 0xf7, 0x23, 0x3c, 0x92, 0x7e, 0x7d, 0xb2, 0xdc, 0xc7,
+            0x03, 0xc0, 0xe5, 0x00, 0xb6, 0x53, 0xca, 0x82, 0x27, 0x3b, 0x7b, 0xfa, 0xd8, 0x04,
+            0x5d, 0x85, 0xa4, 0x70,
+        ];
+
+        let (pubkey, privkey) = generate_keypair().unwrap();
+        let signature = sign_message(&pubkey, &privkey, &data).unwrap();
+        assert_eq!(
+            recover_signature(&invalid_msg, &signature),
+            Err(StatusCode::SigCheckError)
+        );
     }
 }
