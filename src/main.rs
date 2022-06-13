@@ -16,7 +16,9 @@ mod config;
 mod crypto;
 mod eth;
 mod health_check;
+mod panic_hook;
 
+use crate::panic_hook::set_panic_handler;
 use clap::Parser;
 use log::{debug, info, warn};
 
@@ -52,6 +54,7 @@ struct RunOpts {
 
 fn main() {
     ::std::env::set_var("RUST_BACKTRACE", "full");
+    set_panic_handler();
 
     let opts: Opts = Opts::parse();
 
