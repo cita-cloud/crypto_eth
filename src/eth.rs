@@ -129,7 +129,7 @@ pub fn check_transactions(raw_txs: &RawTransactions) -> StatusCodeEnum {
             .par_iter()
             .map(|raw_tx| {
                 check_transaction(raw_tx).map_err(|status| {
-                    log::warn!(
+                    warn!(
                         "check_raw_tx tx(0x{}) failed: {}",
                         hex::encode(get_tx_hash(raw_tx).unwrap()),
                         status
@@ -160,7 +160,7 @@ fn check_transaction(raw_tx: &RawTransaction) -> Result<(), StatusCodeEnum> {
             let mut tx_bytes: Vec<u8> = Vec::new();
             if let Some(tx) = &normal_tx.transaction {
                 tx.encode(&mut tx_bytes).map_err(|_| {
-                    log::warn!("check_raw_tx: encode transaction failed");
+                    warn!("check_raw_tx: encode transaction failed");
                     StatusCodeEnum::EncodeError
                 })?;
             } else {
@@ -188,7 +188,7 @@ fn check_transaction(raw_tx: &RawTransaction) -> Result<(), StatusCodeEnum> {
             let mut tx_bytes: Vec<u8> = Vec::new();
             if let Some(tx) = utxo_tx.transaction.as_ref() {
                 tx.encode(&mut tx_bytes).map_err(|_| {
-                    log::warn!("check_raw_tx: encode utxo failed");
+                    warn!("check_raw_tx: encode utxo failed");
                     StatusCodeEnum::EncodeError
                 })?;
             } else {
