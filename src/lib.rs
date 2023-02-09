@@ -14,3 +14,6 @@
 
 pub mod crypto;
 pub mod eth;
+
+#[macro_use]
+extern crate tracing;
