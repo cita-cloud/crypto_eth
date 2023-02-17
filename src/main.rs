@@ -16,17 +16,12 @@ mod config;
 mod crypto;
 mod eth;
 mod health_check;
-mod panic_hook;
+mod util;
 
 #[macro_use]
 extern crate tracing;
 
-use crate::config::CryptoConfig;
 use crate::crypto::Crypto;
-use crate::eth::{check_transactions, ADDR_BYTES_LEN, SECP256K1_SIGNATURE_BYTES_LEN};
-use crate::health_check::HealthCheckServer;
-use crate::panic_hook::set_panic_handler;
-
 use cita_cloud_proto::blockchain::RawTransactions;
 use cita_cloud_proto::common::StatusCode;
 use cita_cloud_proto::common::{Empty, Hash, HashResponse};
@@ -39,12 +34,16 @@ use cita_cloud_proto::health_check::health_server::HealthServer;
 use cita_cloud_proto::status_code::StatusCodeEnum;
 use clap::Parser;
 use cloud_util::metrics::{run_metrics_exporter, MiddlewareLayer};
+use config::CryptoConfig;
+use eth::{check_transactions, ADDR_BYTES_LEN, SECP256K1_SIGNATURE_BYTES_LEN};
+use health_check::HealthCheckServer;
 use std::net::AddrParseError;
 use tonic::{transport::Server, Request, Response, Status};
+use util::{clap_about, set_panic_handler};
 
 /// crypto service
 #[derive(Parser)]
-#[clap(version, author)]
+#[clap(version, about = clap_about())]
 struct Opts {
     #[clap(subcommand)]
     subcmd: SubCommand,
