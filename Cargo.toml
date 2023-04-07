@@ -1,38 +1,46 @@
 [package]
-name = "crypto"
-version = "6.6.5"
-authors = ["Rivtower Technologies <contact@rivtower.com>"]
-license = "Apache-2.0"
-edition = "2021"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+name = 'crypto'
+version = '6.6.5-beta1'
+license = 'Apache-2.0'
+edition = '2021'
+authors = ['Rivtower Technologies <contact@rivtower.com>']
 
 [dependencies]
-clap = { version = "4.2", features = ["derive"] }
-tonic = "0.9"
-prost = "0.11"
-tokio = { version = "1.27", features = ["full"] }
-hex = "0.4"
-tower = "0.4"
-tiny-keccak = { version = "2.0", features = ["keccak"] }
-secp256k1 = {version = "0.27", features = ["rand", "recovery"]}
-lazy_static = "1.4"
-rayon = "1.7"
-serde = "1.0"
-serde_derive = "1.0"
-backtrace = "0.3"
-tracing = "0.1"
+tonic = '0.9'
+prost = '0.11'
+hex = '0.4'
+tower = '0.4'
+lazy_static = '1.4'
+rayon = '1.7'
+serde = '1.0'
+serde_derive = '1.0'
+backtrace = '0.3'
+tracing = '0.1'
+cloud-util = '=0.6.2-beta1'
+cita_cloud_proto = '=6.6.5-beta1'
 
-cloud-util = { package = "cloud-util", git = "https://github.com/cita-cloud/cloud-common-rs" }
-cita_cloud_proto = { package = "cita_cloud_proto", git = "https://github.com/cita-cloud/cloud-common-rs" }
+[dependencies.clap]
+version = '4.2'
+features = ['derive']
+
+[dependencies.tokio]
+version = '1.27'
+features = ['full']
+
+[dependencies.tiny-keccak]
+version = '2.0'
+features = ['keccak']
+
+[dependencies.secp256k1]
+version = '0.27'
+features = [
+    'rand',
+    'recovery',
+]
 
 [dev-dependencies]
-rand = "0.8" # must be match deps of secp256k1
-
-[profile.release.package."*"]
-# Set the default for dependencies.
-debug = 0
-
+rand = '0.8'
 [profile.release]
-# Add debug info -- line tables only
 debug = 1
+[profile.release.package."*"]
+debug = 0
