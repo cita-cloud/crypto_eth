@@ -1,5 +1,5 @@
 [crypto_eth]
-crypto_port = 60005
+crypto_port = 50005
 domain = "test-chain-node1"
 
 [crypto_eth.log_config]
