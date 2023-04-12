@@ -264,7 +264,7 @@ async fn run(opts: RunOpts) -> Result<(), StatusCodeEnum> {
             .serve(addr)
             .await
             .map_err(|e| {
-                warn!("start crypto_sm grpc server failed: {:?} ", e);
+                warn!("start crypto_eth grpc server failed: {:?} ", e);
                 StatusCodeEnum::FatalError
             })?;
     } else {
@@ -277,7 +277,7 @@ async fn run(opts: RunOpts) -> Result<(), StatusCodeEnum> {
             .serve(addr)
             .await
             .map_err(|e| {
-                warn!("start crypto_sm grpc server failed: {:?} ", e);
+                warn!("start crypto_eth grpc server failed: {:?} ", e);
                 StatusCodeEnum::FatalError
             })?;
     }
