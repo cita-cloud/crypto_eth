@@ -252,7 +252,7 @@ async fn run(opts: RunOpts) -> Result<(), StatusCodeEnum> {
         None
     };
 
-    info!("start crypto_sm grpc server");
+    info!("start crypto_eth grpc server");
     if layer.is_some() {
         info!("metrics on");
         Server::builder()

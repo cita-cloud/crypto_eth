@@ -60,7 +60,7 @@ Options:
 ```
 $ crypto run -c example/config.toml -p example/private_key
 2023-02-09T05:44:39.471368Z  INFO crypto: grpc port of crypto_eth: 60005
-2023-02-09T05:44:39.471418Z  INFO crypto: start crypto_sm grpc server
+2023-02-09T05:44:39.471418Z  INFO crypto: start crypto_eth grpc server
 ```
 
 ## 设计
