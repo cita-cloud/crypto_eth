@@ -22,6 +22,7 @@ mod util;
 extern crate tracing;
 
 use crate::crypto::Crypto;
+use crate::eth::crypto_check_batch;
 use cita_cloud_proto::blockchain::RawTransactions;
 use cita_cloud_proto::common::StatusCode;
 use cita_cloud_proto::common::{Empty, Hash, HashResponse};
@@ -35,7 +36,7 @@ use cita_cloud_proto::status_code::StatusCodeEnum;
 use clap::Parser;
 use cloud_util::metrics::{run_metrics_exporter, MiddlewareLayer};
 use config::CryptoConfig;
-use eth::{check_transactions, ADDR_BYTES_LEN, SECP256K1_SIGNATURE_BYTES_LEN};
+use eth::{ADDR_BYTES_LEN, SECP256K1_SIGNATURE_BYTES_LEN};
 use health_check::HealthCheckServer;
 use std::net::AddrParseError;
 use tonic::{transport::Server, Request, Response, Status};
@@ -213,7 +214,7 @@ impl CryptoService for CryptoServer {
         cloud_util::tracer::set_parent(&request);
         debug!("check_transactions request: {:?}", request);
         let req = request.into_inner();
-        Ok(Response::new(check_transactions(&req).into()))
+        Ok(Response::new(crypto_check_batch(req).into()))
     }
 }
 
