@@ -41,7 +41,7 @@ fn secp256k1_sign(
 ) -> Result<[u8; SECP256K1_SIGNATURE_BYTES_LEN], StatusCodeEnum> {
     let context = &SECP256K1;
     let sec = secp256k1::SecretKey::from_slice(privkey).unwrap();
-    if let Ok(message) = secp256k1::Message::from_slice(msg) {
+    if let Ok(message) = secp256k1::Message::from_digest_slice(msg) {
         let s = context.sign_ecdsa_recoverable(&message, &sec);
         let (rec_id, data) = s.serialize_compact();
         let mut data_arr = [0; SECP256K1_SIGNATURE_BYTES_LEN];
@@ -65,7 +65,7 @@ fn secp256k1_recover(signature: &[u8], message: &[u8]) -> Result<Vec<u8>, Status
             &signature[0..SECP256K1_SIGNATURE_BYTES_LEN - 1],
             rid,
         ) {
-            if let Ok(msg) = secp256k1::Message::from_slice(message) {
+            if let Ok(msg) = secp256k1::Message::from_digest_slice(message) {
                 if let Ok(publ) = context.recover_ecdsa(&msg, &rsig) {
                     let serialized = publ.serialize_uncompressed();
                     return Ok(serialized[1..65].to_vec());
@@ -123,7 +123,7 @@ pub fn recover_signature(msg: &[u8], signature: &[u8]) -> Result<Vec<u8>, Status
 pub fn crypto_check_batch(raw_txs: &RawTransactions) -> StatusCodeEnum {
     use rayon::prelude::*;
 
-    match raw_txs
+    let ret = raw_txs
         .body
         .par_iter()
         .map(|raw_tx| {
@@ -137,8 +137,8 @@ pub fn crypto_check_batch(raw_txs: &RawTransactions) -> StatusCodeEnum {
             })?;
             Ok(())
         })
-        .collect::<Result<(), StatusCodeEnum>>()
-    {
+        .collect::<Result<(), StatusCodeEnum>>();
+    match ret {
         Ok(()) => StatusCodeEnum::Success,
         Err(status) => status,
     }
@@ -201,7 +201,7 @@ pub fn crypto_check(raw_tx: &RawTransaction) -> Result<(), StatusCodeEnum> {
             let tx_hash = &utxo_tx.transaction_hash;
             verify_data_hash(&tx_bytes, tx_hash)?;
 
-            for (_i, w) in witnesses.iter().enumerate() {
+            for w in witnesses {
                 let signature = &w.signature;
                 let sender = &w.sender;
 
