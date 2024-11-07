@@ -49,7 +49,7 @@ fn secp256k1_sign(
         // no need to check if s is low, it always is
         data_arr[0..SECP256K1_SIGNATURE_BYTES_LEN - 1]
             .copy_from_slice(&data[0..SECP256K1_SIGNATURE_BYTES_LEN - 1]);
-        data_arr[SECP256K1_SIGNATURE_BYTES_LEN - 1] = rec_id.to_i32() as u8;
+        data_arr[SECP256K1_SIGNATURE_BYTES_LEN - 1] = rec_id as u8;
         Ok(data_arr)
     } else {
         Err(StatusCodeEnum::SignError)
@@ -58,9 +58,9 @@ fn secp256k1_sign(
 
 fn secp256k1_recover(signature: &[u8], message: &[u8]) -> Result<Vec<u8>, StatusCodeEnum> {
     let context = &SECP256K1;
-    if let Ok(rid) = secp256k1::ecdsa::RecoveryId::from_i32(i32::from(
-        signature[SECP256K1_SIGNATURE_BYTES_LEN - 1],
-    )) {
+    if let Ok(rid) =
+        secp256k1::ecdsa::RecoveryId::try_from(signature[SECP256K1_SIGNATURE_BYTES_LEN - 1] as i32)
+    {
         if let Ok(rsig) = secp256k1::ecdsa::RecoverableSignature::from_compact(
             &signature[0..SECP256K1_SIGNATURE_BYTES_LEN - 1],
             rid,
@@ -73,6 +73,7 @@ fn secp256k1_recover(signature: &[u8], message: &[u8]) -> Result<Vec<u8>, Status
             }
         }
     }
+
     Err(StatusCodeEnum::SigCheckError)
 }
 
@@ -127,13 +128,12 @@ pub fn crypto_check_batch(raw_txs: &RawTransactions) -> StatusCodeEnum {
         .body
         .par_iter()
         .map(|raw_tx| {
-            crypto_check(raw_tx).map_err(|status| {
+            crypto_check(raw_tx).inspect_err(|&status| {
                 warn!(
                     "check_raw_tx tx(0x{}) failed: {}",
                     hex::encode(get_tx_hash(raw_tx).unwrap()),
                     status
                 );
-                status
             })?;
             Ok(())
         })
