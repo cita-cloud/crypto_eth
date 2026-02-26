@@ -40,9 +40,10 @@ fn secp256k1_sign(
     msg: &[u8],
 ) -> Result<[u8; SECP256K1_SIGNATURE_BYTES_LEN], StatusCodeEnum> {
     let context = &SECP256K1;
-    let sec = secp256k1::SecretKey::from_slice(privkey).unwrap();
-    if let Ok(message) = secp256k1::Message::from_digest_slice(msg) {
-        let s = context.sign_ecdsa_recoverable(&message, &sec);
+    let sec = secp256k1::SecretKey::from_byte_array(privkey.try_into().unwrap()).unwrap();
+    if let Ok(digest) = msg.try_into() {
+        let message = secp256k1::Message::from_digest(digest);
+        let s = context.sign_ecdsa_recoverable(message, &sec);
         let (rec_id, data) = s.serialize_compact();
         let mut data_arr = [0; SECP256K1_SIGNATURE_BYTES_LEN];
 
@@ -60,17 +61,16 @@ fn secp256k1_recover(signature: &[u8], message: &[u8]) -> Result<Vec<u8>, Status
     let context = &SECP256K1;
     if let Ok(rid) =
         secp256k1::ecdsa::RecoveryId::try_from(signature[SECP256K1_SIGNATURE_BYTES_LEN - 1] as i32)
-    {
-        if let Ok(rsig) = secp256k1::ecdsa::RecoverableSignature::from_compact(
+        && let Ok(rsig) = secp256k1::ecdsa::RecoverableSignature::from_compact(
             &signature[0..SECP256K1_SIGNATURE_BYTES_LEN - 1],
             rid,
-        ) {
-            if let Ok(msg) = secp256k1::Message::from_digest_slice(message) {
-                if let Ok(publ) = context.recover_ecdsa(&msg, &rsig) {
-                    let serialized = publ.serialize_uncompressed();
-                    return Ok(serialized[1..65].to_vec());
-                }
-            }
+        )
+        && let Ok(digest) = message.try_into()
+    {
+        let msg = secp256k1::Message::from_digest(digest);
+        if let Ok(publ) = context.recover_ecdsa(msg, &rsig) {
+            let serialized = publ.serialize_uncompressed();
+            return Ok(serialized[1..65].to_vec());
         }
     }
 
@@ -93,7 +93,7 @@ pub fn verify_data_hash(data: &[u8], hash: &[u8]) -> Result<(), StatusCodeEnum> 
 
 pub fn sk2pk(sk: &[u8]) -> Vec<u8> {
     let context = &SECP256K1;
-    let sec = secp256k1::SecretKey::from_slice(sk).unwrap();
+    let sec = secp256k1::SecretKey::from_byte_array(sk.try_into().unwrap()).unwrap();
     let pub_key = secp256k1::PublicKey::from_secret_key(context, &sec);
     let serialized = pub_key.serialize_uncompressed();
     serialized[1..].to_vec()
@@ -231,7 +231,7 @@ mod tests {
         StatusCodeEnum,
     > {
         let context = &SECP256K1;
-        let (sec_key, pub_key) = context.generate_keypair(&mut rand::thread_rng());
+        let (sec_key, pub_key) = context.generate_keypair(&mut rand::rng());
 
         let serialized = pub_key.serialize_uncompressed();
         let mut pub_key = [0u8; SECP256K1_PUBKEY_BYTES_LEN];

@@ -27,19 +27,19 @@ use cita_cloud_proto::blockchain::RawTransactions;
 use cita_cloud_proto::common::StatusCode;
 use cita_cloud_proto::common::{Empty, Hash, HashResponse};
 use cita_cloud_proto::crypto::{
-    crypto_service_server::CryptoService, crypto_service_server::CryptoServiceServer,
     GetCryptoInfoResponse, HashDataRequest, RecoverSignatureRequest, RecoverSignatureResponse,
     SignMessageRequest, SignMessageResponse, VerifyDataHashRequest,
+    crypto_service_server::CryptoService, crypto_service_server::CryptoServiceServer,
 };
 use cita_cloud_proto::health_check::health_server::HealthServer;
 use cita_cloud_proto::status_code::StatusCodeEnum;
 use clap::Parser;
-use cloud_util::metrics::{run_metrics_exporter, MiddlewareLayer};
+use cloud_util::metrics::{MiddlewareLayer, run_metrics_exporter};
 use config::CryptoConfig;
 use eth::{ADDR_BYTES_LEN, SECP256K1_SIGNATURE_BYTES_LEN};
 use health_check::HealthCheckServer;
 use std::net::AddrParseError;
-use tonic::{transport::Server, Request, Response, Status};
+use tonic::{Request, Response, Status, transport::Server};
 use util::clap_about;
 
 /// crypto service
@@ -69,8 +69,6 @@ struct RunOpts {
 }
 
 fn main() {
-    ::std::env::set_var("RUST_BACKTRACE", "full");
-
     let opts: Opts = Opts::parse();
 
     // You can handle information about subcommands by requesting their matches by name
@@ -253,10 +251,10 @@ async fn run(opts: RunOpts) -> Result<(), StatusCodeEnum> {
     };
 
     info!("start crypto_eth grpc server");
-    if layer.is_some() {
+    if let Some(layer) = layer {
         info!("metrics on");
         Server::builder()
-            .layer(layer.unwrap())
+            .layer(layer)
             .add_service(CryptoServiceServer::new(CryptoServer::new(Crypto::new(
                 &opts.private_key_path,
             ))))
